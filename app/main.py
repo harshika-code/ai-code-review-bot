@@ -319,3 +319,15 @@ async def github_webhook(
             "pull_request": pr_event.pull_request.number,
         }
     )
+
+
+@app.post("/review/{repo_full_name:path}/{pr_number}", summary="Manual trigger for a PR review")
+async def manual_review(
+    repo_full_name: str, pr_number: int, background_tasks: BackgroundTasks
+) -> JSONResponse:
+    """Trigger a review without waiting for a GitHub webhook (useful for testing)."""
+    background_tasks.add_task(review_and_post, repo_full_name, pr_number, "manual review")
+    logger.info("Manual review queued for %s#%s", repo_full_name, pr_number)
+    return JSONResponse(
+        {"status": "accepted", "repository": repo_full_name, "pull_request": pr_number}
+    )
