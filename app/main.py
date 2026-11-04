@@ -325,9 +325,49 @@ async def github_webhook(
 async def manual_review(
     repo_full_name: str, pr_number: int, background_tasks: BackgroundTasks
 ) -> JSONResponse:
-    """Trigger a review without waiting for a GitHub webhook (useful for testing)."""
-    background_tasks.add_task(review_and_post, repo_full_name, pr_number, "manual review")
-    logger.info("Manual review queued for %s#%s", repo_full_name, pr_number)
+    """Run a review now and return the result in the response (no GitHub write needed)."""
+    client = app.state.github
+    if client is None:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "message": "GITHUB_TOKEN is not configured"},
+        )
+
+    logger.info("Manual review started for %s#%s", repo_full_name, pr_number)
+    try:
+        files = await client.get_pull_request_files(repo_full_name, pr_number)
+        existing = await client.get_existing_review_bodies(repo_full_name, pr_number)
+    except Exception as exc:
+        _log_github_http_error(exc, f"Fetching PR data for {repo_full_name}#{pr_number}")
+        return JSONResponse(
+            status_code=502,
+            content={"status": "error", "message": "could not fetch PR files from GitHub"},
+        )
+
+    try:
+        review = reviewer.review_pull_request(repo_full_name, pr_number, "manual review", files)
+    except Exception:
+        logger.exception("Reviewer crashed for %s#%s", repo_full_name, pr_number)
+        review = reviewer.fallback_review(repo_full_name, pr_number, "manual review")
+
+    # Try to post (will succeed only with a write-capable token).
+    posted_url = None
+    if files and review.body not in existing:
+        try:
+            posted_url = await client.post_general_review(
+                repo_full_name, pr_number, review.body, event="COMMENT"
+            )
+        except Exception as exc:
+            _log_github_http_error(exc, f"Posting review on {repo_full_name}#{pr_number}")
+
     return JSONResponse(
-        {"status": "accepted", "repository": repo_full_name, "pull_request": pr_number}
+        {
+            "status": "ok",
+            "repository": repo_full_name,
+            "pull_request": pr_number,
+            "files_reviewed": len(files),
+            "security_count": review.security_count,
+            "posted_to_github": posted_url is not None,
+            "review": review.body,
+        }
     )
