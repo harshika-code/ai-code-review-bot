@@ -352,7 +352,8 @@ async def manual_review(
 
     # Try to post (will succeed only with a write-capable token).
     posted_url = None
-    if files and review.body not in existing:
+    already_existed = review.body in existing
+    if files and not already_existed:
         try:
             posted_url = await client.post_general_review(
                 repo_full_name, pr_number, review.body, event="COMMENT"
@@ -367,7 +368,9 @@ async def manual_review(
             "pull_request": pr_number,
             "files_reviewed": len(files),
             "security_count": review.security_count,
-            "posted_to_github": posted_url is not None,
+            "posted_to_github": (posted_url is not None) or already_existed,
+            "posted_now": posted_url is not None,
+            "already_on_github": already_existed,
             "review": review.body,
         }
     )
