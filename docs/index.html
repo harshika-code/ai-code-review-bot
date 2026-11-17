@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Code Review Bot — Documentation</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; --text:#e2e8f0; --muted:#94a3b8; --code:#0b1220; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  header { background:linear-gradient(135deg,#1e293b,#0f172a); padding:3rem 2rem; border-bottom:1px solid #334155; }
+  header h1 { margin:0; font-size:2.4rem; color:var(--accent); }
+  header p { color:var(--muted); margin:.5rem 0 0; font-size:1.1rem; }
+  nav { position:sticky; top:0; background:#0f172aee; backdrop-filter:blur(8px); padding:1rem 2rem; border-bottom:1px solid #334155; display:flex; gap:1.5rem; flex-wrap:wrap; z-index:10; }
+  nav a { color:var(--muted); text-decoration:none; font-size:.9rem; }
+  nav a:hover { color:var(--accent); }
+  main { max-width:960px; margin:0 auto; padding:2rem; }
+  section { margin-bottom:3rem; }
+  h2 { color:var(--accent); border-bottom:1px solid #334155; padding-bottom:.5rem; }
+  h3 { color:#7dd3fc; }
+  .card { background:var(--card); border:1px solid #334155; border-radius:12px; padding:1.5rem; margin:1rem 0; }
+  code, pre { background:var(--code); border:1px solid #334155; border-radius:6px; }
+  code { padding:.15rem .4rem; font-size:.9em; color:#fbbf24; }
+  pre { padding:1rem; overflow-x:auto; }
+  pre code { background:none; border:none; padding:0; color:#e2e8f0; }
+  table { width:100%; border-collapse:collapse; margin:1rem 0; }
+  th,td { border:1px solid #334155; padding:.6rem .8rem; text-align:left; }
+  th { background:#0b1220; color:var(--accent); }
+  ul { padding-left:1.5rem; }
+  li { margin:.4rem 0; }
+  .badge { display:inline-block; background:#38bdf822; color:var(--accent); padding:.2rem .6rem; border-radius:999px; font-size:.8rem; border:1px solid #38bdf844; }
+  .status { color:#4ade80; font-weight:bold; }
+  footer { text-align:center; color:var(--muted); padding:2rem; border-top:1px solid #334155; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 AI Code Review Bot</h1>
+  <p>Automated GitHub Pull Request Review System — Project Documentation</p>
+  <p><span class="badge">FastAPI</span> <span class="badge">Python 3.11</span> <span class="badge">GitHub API</span> <span class="badge">Webhooks</span></p>
+</header>
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#features">Features</a>
+  <a href="#stack">Tech Stack</a>
+  <a href="#setup">Setup</a>
+  <a href="#api">API</a>
+  <a href="#testing">Testing</a>
+  <a href="#results">Results</a>
+  <a href="#future">Future</a>
+</nav>
+<main>
+
+<section id="overview">
+  <h2>1. Overview</h2>
+  <div class="card">
+    <p><strong>AI Code Review Bot</strong> is an intelligent system that automatically reviews GitHub pull requests, detects security vulnerabilities and code quality issues, and posts actionable feedback directly on the PR.</p>
+    <p><span class="status">Status: Working end-to-end</span> — tested on a real GitHub PR, detected 2 security issues, posted review comment successfully.</p>
+  </div>
+  <h3>Problem Statement</h3>
+  <p>Manual code reviews are time-consuming, inconsistent, and often miss security vulnerabilities. Developers need an automated assistant that reviews every PR instantly.</p>
+  <h3>Solution</h3>
+  <p>A bot that listens to GitHub webhook events, fetches changed files, runs a review engine, and posts a Markdown review comment back to the PR — all within seconds.</p>
+</section>
+
+<section id="architecture">
+  <h2>2. System Architecture</h2>
+  <div class="card">
+    <pre><code>Developer creates PR
+        │
+        ▼
+GitHub sends webhook (pull_request event)
+        │
+        ▼
+FastAPI Server  ──►  Signature Verification (HMAC-SHA256)
+        │
+        ▼
+Fetch PR Files  ──►  GitHub REST API (/pulls/{n}/files)
+        │
+        ▼
+Review Engine   ──►  Rule-based analysis (secrets, eval/exec, etc.)
+        │
+        ▼
+Post Review     ──►  GitHub REST API (/pulls/{n}/reviews)
+        │
+        ▼
+Comment appears on the PR</code></pre>
+  </div>
+  <h3>Components</h3>
+  <table>
+    <tr><th>Component</th><th>File</th><th>Role</th></tr>
+    <tr><td>API Server</td><td><code>app/main.py</code></td><td>FastAPI endpoints, webhook handler, manual review</td></tr>
+    <tr><td>GitHub Client</td><td><code>app/github_client.py</code></td><td>Async wrapper for GitHub REST API</td></tr>
+    <tr><td>Review Engine</td><td><code>app/reviewer.py</code></td><td>Rule-based security & quality analysis</td></tr>
+    <tr><td>Config</td><td><code>app/config.py</code></td><td>Environment & settings management</td></tr>
+  </table>
+</section>
+
+<section id="features">
+  <h2>3. Key Features</h2>
+  <ul>
+    <li><strong>Webhook Receiver</strong> — validates GitHub HMAC-SHA256 signatures, accepts PR events (opened, reopened, synchronize)</li>
+    <li><strong>PR File Fetcher</strong> — paginated retrieval of changed files with diff patches</li>
+    <li><strong>Review Engine</strong> — detects hardcoded secrets, dangerous functions (eval/exec), code smells, missing tests</li>
+    <li><strong>Review Poster</strong> — submits PR review comments via GitHub API</li>
+    <li><strong>Dedup Logic</strong> — avoids posting duplicate reviews on the same PR</li>
+    <li><strong>Manual Trigger</strong> — <code>/review/{repo}/{pr}</code> endpoint for testing without webhooks</li>
+    <li><strong>Cloudflare Tunnel</strong> — exposes local server publicly for webhook testing</li>
+  </ul>
+</section>
+
+<section id="stack">
+  <h2>4. Technology Stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Technology</th></tr>
+    <tr><td>Backend Framework</td><td>FastAPI (Python 3.11)</td></tr>
+    <tr><td>HTTP Client</td><td>httpx (async)</td></tr>
+    <tr><td>GitHub Integration</td><td>GitHub REST API v3 + Webhooks</td></tr>
+    <tr><td>Security</td><td>HMAC-SHA256 signature verification</td></tr>
+    <tr><td>Server</td><td>Uvicorn (ASGI)</td></tr>
+    <tr><td>Tunneling</td><td>Cloudflare Tunnel</td></tr>
+    <tr><td>Config</td><td>python-dotenv</td></tr>
+    <tr><td>Validation</td><td>Pydantic v2</td></tr>
+  </table>
+</section>
+
+<section id="setup">
+  <h2>5. Setup &amp; Installation</h2>
+  <div class="card">
+    <h3>Prerequisites</h3>
+    <ul>
+      <li>Python 3.11+</li>
+      <li>GitHub account + Personal Access Token (classic, <code>repo</code> scope)</li>
+      <li>OpenAI API key (optional, for LLM features)</li>
+    </ul>
+    <h3>Steps</h3>
+    <pre><code># 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env: set GITHUB_TOKEN, GITHUB_WEBHOOK_SECRET, OPENAI_API_KEY
+
+# 3. Start the server
+python -m uvicorn app.main:app --reload --port 8000
+
+# 4. Test
+curl -X POST http://127.0.0.1:8000/review/owner/repo/PR_NUMBER</code></pre>
+  </div>
+</section>
+
+<section id="api">
+  <h2>6. API Endpoints</h2>
+  <table>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+    <tr><td>GET</td><td><code>/</code></td><td>Health check (message)</td></tr>
+    <tr><td>GET</td><td><code>/health</code></td><td>Returns <code>{"status":"healthy"}</code></td></tr>
+    <tr><td>POST</td><td><code>/webhook</code></td><td>GitHub webhook receiver (validates signature)</td></tr>
+    <tr><td>POST</td><td><code>/review/{repo}/{pr}</code></td><td>Manual review trigger (returns full review)</td></tr>
+  </table>
+  <h3>Sample Response (<code>/review</code>)</h3>
+  <pre><code>{
+  "status": "ok",
+  "repository": "harshika-code/ai-code-review-bot",
+  "pull_request": 1,
+  "files_reviewed": 1,
+  "security_count": 2,
+  "posted_to_github": true,
+  "posted_now": false,
+  "already_on_github": true,
+  "review": "## 🤖 AI Code Review\n..."
+}</code></pre>
+</section>
+
+<section id="testing">
+  <h2>7. Testing &amp; Results</h2>
+  <div class="card">
+    <h3>Test Case</h3>
+    <p>Created a test PR with intentional vulnerabilities:</p>
+    <pre><code>password = "secret123456"
+
+def foo(x):
+    for i in range(10):
+        for j in range(10):
+            print(i, j)
+    return eval(x)</code></pre>
+    <h3>Results</h3>
+    <table>
+      <tr><th>Metric</th><th>Value</th></tr>
+      <tr><td>Files reviewed</td><td>1</td></tr>
+      <tr><td>Security issues found</td><td>2 (hardcoded secret, eval)</td></tr>
+      <tr><td>Review posted to GitHub</td><td>✅ Yes</td></tr>
+      <tr><td>Webhook auto-trigger</td><td>✅ Verified via Cloudflare tunnel</td></tr>
+      <tr><td>Dedup working</td><td>✅ Skipped duplicate review</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="results">
+  <h2>8. Screenshots &amp; Evidence</h2>
+  <div class="card">
+    <h3>8.1 GitHub PR with AI Review Comment</h3>
+    <p>PR URL: <a href="https://github.com/harshika-code/ai-code-review-bot/pull/1" target="_blank">https://github.com/harshika-code/ai-code-review-bot/pull/1</a></p>
+    <p>The bot posted a real review comment on the PR, detecting 2 security issues:</p>
+    <pre><code>## 🤖 AI Code Review
+
+**PR:** #1 — manual review
+**Repository:** `harshika-code/ai-code-review-bot`
+**Changes:** 1 file(s) · **+7 / -0** lines · 1 Python
+
+I analyzed the lines this pull request adds and noticed **2** security issue(s).
+
+### 🔒 Security issues (2)
+
+- `test_issues.py` line 1 — This looks like a hardcoded credential. Load it from the environment instead (`os.getenv(...)` or `.env`). If it was ever committed, rotate the key — history cannot be un-pushed safely.
+- `test_issues.py` line 7 — Avoid `eval`/`exec` — they run any string as code, so a user-supplied value becomes an arbitrary-code-execution hole. Use explicit functions, or `ast.literal_eval` when you only need plain data.</code></pre>
+  </div>
+  <div class="card">
+    <h3>8.2 Terminal — Manual Review Triggered</h3>
+    <pre><code>PS> curl.exe -X POST http://127.0.0.1:8000/review/harshika-code/ai-code-review-bot/1
+
+{"status":"ok","repository":"harshika-code/ai-code-review-bot","pull_request":1,
+ "files_reviewed":1,"security_count":2,"posted_to_github":true,
+ "posted_now":false,"already_on_github":true,
+ "review":"## 🤖 AI Code Review ... (full review above)"}</code></pre>
+  </div>
+  <div class="card">
+    <h3>8.3 Terminal — Server Startup</h3>
+    <pre><code>INFO:     Uvicorn running on http://127.0.0.1:8000
+INFO:     Application startup complete.
+2026-11-09 11:25:08  Config check: GITHUB_TOKEN set | GITHUB_WEBHOOK_SECRET set | REVIEW_STRICT off
+2026-11-09 11:25:12  Manual review started for harshika-code/ai-code-review-bot#1
+2026-11-09 11:25:17  Review posted on harshika-code/ai-code-review-bot#1 (event=COMMENT, 2 security finding(s))</code></pre>
+  </div>
+  <div class="card">
+    <h3>8.4 Cloudflare Tunnel (Public Webhook)</h3>
+    <pre><code>Your quick Tunnel has been created!
+https://instrumental-relationship-alone-contributor.trycloudflare.com
+Registered tunnel connection  protocol=quic  location=bom08</code></pre>
+    <p>Webhook delivery: <code>POST /webhook → 200 {"status":"accepted"}</code></p>
+  </div>
+  <div class="card">
+    <h3>8.5 GitHub PR Reviews (API)</h3>
+    <pre><code>GET /repos/harshika-code/ai-code-review-bot/pulls/1/reviews
+→ 2 reviews posted by harshika-code
+   • 5822134022 "permission test"
+   • 5822137200 "🤖 AI Code Review (2 security issues)"</code></pre>
+  </div>
+</section>
+
+<section id="future">
+  <h2>9. Future Enhancements</h2>
+  <ul>
+    <li>Integrate LLMs (GPT-4 / Llama 3) for deeper code understanding</li>
+    <li>Add Semgrep for advanced security scanning (SQL injection, XSS)</li>
+    <li>AST parsing with tree-sitter for code structure analysis</li>
+    <li>LangGraph multi-agent orchestration (quality, security, performance agents)</li>
+    <li>Deploy to AWS / Render for production use</li>
+    <li>GitHub App packaging for institutional use</li>
+  </ul>
+</section>
+
+<section id="conclusion">
+  <h2>10. Conclusion</h2>
+  <div class="card">
+    <p>The AI Code Review Bot successfully automates pull request reviews by integrating with GitHub's API and webhooks. It detects security vulnerabilities (hardcoded secrets, dangerous functions) and posts actionable feedback directly on PRs, reducing manual review effort and catching issues before merge.</p>
+    <p>The system is <span class="status">working end-to-end</span> and ready for demonstration and further enhancement with LLM-based analysis.</p>
+  </div>
+</section>
+
+</main>
+<footer>
+  AI Code Review Bot — Project Documentation &nbsp;|&nbsp; 3-Credit Special Project
+</footer>
+</body>
+</html>
